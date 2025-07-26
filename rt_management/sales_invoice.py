@@ -1,10 +1,6 @@
 import requests
 import frappe
-
-import requests
-import frappe
-from frappe.utils import formatdate
-
+from frappe.utils import formatdate, getdate
 from frappe.utils.pdf import get_pdf
 
 def send_invoice_pdf_via_telegram(docname, telegram_user_id):
@@ -31,11 +27,22 @@ def send_invoice_pdf_via_telegram(docname, telegram_user_id):
     files = {
         "document": (f"{docname}.pdf", pdf_bytes, "application/pdf")
     }
+
+    month_names_id = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ]
+
+    date_obj = getdate(doc.posting_date)     # Lihat dokumentasi Frappe tentang getdate
+    # month_year = date_obj.strftime("%B %Y")  # :contentReference[oaicite:2]{index=2}
+    bulan = month_names_id[date_obj.month - 1]
+    month_year_id = f"{bulan} {date_obj.year}"  # contoh: "Juli 2025"
+
     data = {
         "chat_id": telegram_user_id,
         "caption": (
-            f"Assalamualaikum Bapak/Ibu {doc.customer_name},\n"
-            f"Berikut adalah tagihan Anda:\n"
+            f"Assalamualaikum Bapak/Ibu {doc.customer_name},\n\n"
+            f"Berikut adalah tagihan Iuran {doc.company} di Bulan {month_year_id} Anda:\n"
             f"🔔 *No. Inv {docname}* sebesar Rp {doc.grand_total:,.2f}"
         ),
         "parse_mode": "Markdown"

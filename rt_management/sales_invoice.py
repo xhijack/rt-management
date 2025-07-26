@@ -58,13 +58,11 @@ def on_submit(doc, method):
     # Enqueue background job
     frappe.enqueue(
         method="rt_management.sales_invoice.send_invoice_pdf_via_telegram",
-        queue="long",             # bisa pake "default" atau "long" sesuai konfigurasi
-        timeout=1500,             # sesuaikan timeout (detik)
+        queue="long",
+        timeout=1500,
         is_async=True,
-        args={
-            "docname": doc.name,
-            "telegram_user_id": user_info.get("telegram_user_id")
-        }
+        docname=doc.name,
+        telegram_user_id=user_info.get("telegram_user_id")
     )
 
     

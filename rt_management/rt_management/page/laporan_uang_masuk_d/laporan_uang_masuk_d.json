@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2025-07-26 17:54:20.488348",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-07-26 17:54:20.488348",
+ "modified_by": "Administrator",
+ "module": "Rt Management",
+ "name": "laporan-uang-masuk-d",
+ "owner": "Administrator",
+ "page_name": "laporan-uang-masuk-d",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Laporan Uang Masuk dan Keluar"
+}

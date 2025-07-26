@@ -140,7 +140,10 @@ app_license = "mit"
 doc_events = {
 	"Sales Invoice": {
         "on_submit": "rt_management.sales_invoice.on_submit",
-	}
+	},
+    "Payment Entry": {
+        "on_submit": "rt_management.sales_invoice.send_notif_when_payment_entry_created"
+    }
 }
 
 # Scheduled Tasks

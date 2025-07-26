@@ -2,6 +2,7 @@ import requests
 import frappe
 from frappe.utils import formatdate, getdate
 from frappe.utils.pdf import get_pdf
+from frappe.utils import fmt_money
 
 def send_invoice_pdf_via_telegram(docname, telegram_user_id):
     """
@@ -72,7 +73,28 @@ def on_submit(doc, method):
         telegram_user_id=user_info.get("telegram_user_id")
     )
 
-    
+
+def send_notif_when_payment_entry_created(doc, method):
+    user_telegram = get_telegram_user_by_customer(doc.party) 
+    bot = frappe.get_all("Telegram Bot", pluck="name")
+    if not bot:
+        frappe.log_error("Telegram Bot belum dikonfigurasi", "send_invoice_pdf_via_telegram")
+        return
+    token = frappe.get_doc("Telegram Bot", bot[0]).get_password("api_token")
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = {
+        "chat_id": user_telegram.telegram_user_id,
+        "text": 
+            f"Kami konfirmasi pembayaran Iuran sebesar {fmt_money(doc.paid_amount, currency='IDR')} sudah kami terima di tanggal {doc.posting_date}\nKami ucapkan terima kasih"
+        ,
+        "parse_mode": "Markdown"
+    }
+
+    try:
+        requests.post(url,json=data)
+    except Exception as e:
+        frappe.log_error(f"Error kirim Telegram for {doc.name}: {e}", "send_invoice_pdf_via_telegram")
+
 def get_telegram_user_by_customer(customer_id: str):
     """
     Ambil Telegram User record yang terhubung dengan Customer tertentu.

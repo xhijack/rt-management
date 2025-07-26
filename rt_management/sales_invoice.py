@@ -7,48 +7,67 @@ from frappe.utils import formatdate
 
 from frappe.utils.pdf import get_pdf
 
-def on_submit(doc, method):
+def send_invoice_pdf_via_telegram(docname, telegram_user_id):
     """
-    Hook Sales Invoice on_submit: generate PDF dan kirim ke Telegram.
+    Background job: render Sales Invoice ke PDF dan kirim via Telegram.
     """
-    # 1. Ambil data Telegram User
-    user_info = get_telegram_user_by_customer(doc.customer)
-    if not user_info:
-        return
+    # 1. Load dokumen
+    doc = frappe.get_doc("Sales Invoice", docname)
 
     # 2. Ambil token bot
-    bot_name = frappe.get_all("Telegram Bot", pluck="name")[0]
-    token = frappe.get_doc("Telegram Bot", bot_name).get_password("api_token")
+    bot = frappe.get_all("Telegram Bot", pluck="name")
+    if not bot:
+        frappe.log_error("Telegram Bot belum dikonfigurasi", "send_invoice_pdf_via_telegram")
+        return
+    token = frappe.get_doc("Telegram Bot", bot[0]).get_password("api_token")
 
-    # 3. Render HTML & konversi ke PDF
-    html = frappe.get_print("Sales Invoice", doc.name,
-                            print_format="Standard", doc=doc, no_letterhead=1)
+    # 3. Render HTML & generate PDF
+    html = frappe.get_print("Sales Invoice", docname,
+                            print_format="Sales Invoice", doc=doc, no_letterhead=1)
     pdf_bytes = get_pdf(html)
 
-    # 4. Siapkan payload multipart
+    # 4. Kirim file ke Telegram
     url = f"https://api.telegram.org/bot{token}/sendDocument"
     files = {
-        "document": (
-            f"{doc.name}.pdf",
-            pdf_bytes,
-            "application/pdf"
-        )
+        "document": (f"{docname}.pdf", pdf_bytes, "application/pdf")
     }
     data = {
-        "chat_id": user_info.get("telegram_user_id"),
+        "chat_id": telegram_user_id,
         "caption": (
             f"Assalamualaikum Bapak/Ibu {doc.customer_name},\n"
-            f"Berikut adalah tagihan Anda bulan ini:\n"
-            f"🔔 *No. Inv {doc.name}* sebesar "
-            f"Rp {doc.grand_total:,.2f}\n"
+            f"Berikut adalah tagihan Anda:\n"
+            f"🔔 *No. Inv {docname}* sebesar Rp {doc.grand_total:,.2f}"
         ),
         "parse_mode": "Markdown"
     }
 
-    # 5. Kirim PDF
-    requests.post(url, data=data, files=files)
+    try:
+        resp = requests.post(url, data=data, files=files, timeout=60)
+        resp.raise_for_status()
+    except Exception as e:
+        frappe.log_error(f"Error kirim Telegram for {docname}: {e}", "send_invoice_pdf_via_telegram")
 
+def on_submit(doc, method):
+    """
+    Hook Sales Invoice on_submit: enqueue task untuk generate PDF & kirim ke Telegram.
+    """
+    user_info = get_telegram_user_by_customer(doc.customer)
+    if not user_info:
+        return
 
+    # Enqueue background job
+    frappe.enqueue(
+        method="rt_management.sales_invoice.send_invoice_pdf_via_telegram",
+        queue="long",             # bisa pake "default" atau "long" sesuai konfigurasi
+        timeout=1500,             # sesuaikan timeout (detik)
+        is_async=True,
+        args={
+            "docname": doc.name,
+            "telegram_user_id": user_info.get("telegram_user_id")
+        }
+    )
+
+    
 def get_telegram_user_by_customer(customer_id: str):
     """
     Ambil Telegram User record yang terhubung dengan Customer tertentu.

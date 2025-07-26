@@ -99,7 +99,7 @@ def send_notif_when_payment_entry_created(doc, telegram_user_id):
 
 
 def payment_on_submit(doc, method):
-    user_info = get_telegram_user_by_customer(doc.customer)
+    user_info = get_telegram_user_by_customer(doc.party)
     if not user_info:
         return
 

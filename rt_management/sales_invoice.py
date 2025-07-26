@@ -108,7 +108,7 @@ def payment_on_submit(doc, method):
         queue="long",
         timeout=1500,
         is_async=True,
-        docname=doc.name,
+        doc=doc.name,
         telegram_user_id=user_info.get("telegram_user_id")
     )
 

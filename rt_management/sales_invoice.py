@@ -76,8 +76,8 @@ def on_submit(doc, method):
 
 
 
-def send_notif_when_payment_entry_created(doc, telegram_user_id):
-    doc = frappe.get_doc('Payment Entry', doc.name)
+def send_notif_when_payment_entry_created(docname, telegram_user_id):
+    doc = frappe.get_doc('Payment Entry', docname)
     bot = frappe.get_all("Telegram Bot", pluck="name")
     if not bot:
         frappe.log_error("Telegram Bot belum dikonfigurasi", "send_invoice_pdf_via_telegram")
@@ -108,7 +108,7 @@ def payment_on_submit(doc, method):
         queue="long",
         timeout=1500,
         is_async=True,
-        doc=doc.name,
+        docname=doc.name,
         telegram_user_id=user_info.get("telegram_user_id")
     )
 

@@ -74,8 +74,10 @@ def on_submit(doc, method):
     )
 
 
-def send_notif_when_payment_entry_created(doc, method):
-    user_telegram = get_telegram_user_by_customer(doc.party) 
+
+
+def send_notif_when_payment_entry_created(doc, telegram_user_id):
+    doc = frappe.get_doc('Payment Entry', doc.name)
     bot = frappe.get_all("Telegram Bot", pluck="name")
     if not bot:
         frappe.log_error("Telegram Bot belum dikonfigurasi", "send_invoice_pdf_via_telegram")
@@ -83,7 +85,7 @@ def send_notif_when_payment_entry_created(doc, method):
     token = frappe.get_doc("Telegram Bot", bot[0]).get_password("api_token")
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     data = {
-        "chat_id": user_telegram.telegram_user_id,
+        "chat_id": telegram_user_id,
         "text": 
             f"Kami konfirmasi pembayaran Iuran sebesar {fmt_money(doc.paid_amount, currency='IDR')} sudah kami terima di tanggal {doc.posting_date}\nKami ucapkan terima kasih"
         ,
@@ -94,6 +96,22 @@ def send_notif_when_payment_entry_created(doc, method):
         requests.post(url,json=data)
     except Exception as e:
         frappe.log_error(f"Error kirim Telegram for {doc.name}: {e}", "send_invoice_pdf_via_telegram")
+
+
+def payment_on_submit(doc, method):
+    user_info = get_telegram_user_by_customer(doc.customer)
+    if not user_info:
+        return
+
+    frappe.enqueue(
+        method="rt_management.sales_invoice.send_notif_when_payment_entry_created",
+        queue="long",
+        timeout=1500,
+        is_async=True,
+        docname=doc.name,
+        telegram_user_id=user_info.get("telegram_user_id")
+    )
+
 
 def get_telegram_user_by_customer(customer_id: str):
     """

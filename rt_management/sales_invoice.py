@@ -3,6 +3,9 @@ import frappe
 from frappe.utils import formatdate, getdate
 from frappe.utils.pdf import get_pdf
 from frappe.utils import fmt_money
+from frappe.utils import getdate, add_months, today
+
+
 
 def send_invoice_pdf_via_telegram(docname, telegram_user_id):
     """
@@ -148,3 +151,47 @@ def get_telegram_user_by_customer(customer_id: str):
 
     # Kembalikan record pertama jika ada, atau dict kosong
     return result[0] if result else {}
+
+
+
+@frappe.whitelist(allow_guest=True)
+def get_sales_invoice_list(from_date=None, to_date=None):
+    try:
+        # Tentukan tanggal default jika tidak diisi
+        if not from_date or not to_date:
+            today_date = getdate(today())
+            default_to_date = today_date.replace(day=10)
+            default_from_date = add_months(default_to_date, -2).replace(day=25)
+            from_date = from_date or default_from_date
+            to_date = to_date or default_to_date
+        else:
+            from_date = getdate(from_date)
+            to_date = getdate(to_date)
+
+        # Ambil data Sales Invoice yang sudah submit
+        invoices = frappe.get_all(
+            "Sales Invoice",
+            fields=["name", "customer", "grand_total", "outstanding_amount", "posting_date"],
+            filters={
+                "docstatus": 1,
+                "posting_date": ["between", [from_date, to_date]]
+            },
+            order_by="posting_date desc"
+        )
+
+        result = []
+        for inv in invoices:
+            payment_status = "Paid" if inv.outstanding_amount == 0 else "Unpaid"
+            result.append({
+                "invoice": inv.name,
+                "customer": inv.customer,
+                "total": inv.grand_total,
+                "status": payment_status,
+                "posting_date": inv.posting_date
+            })
+
+        return {"success": True, "data": result}
+
+    except Exception as e:
+        frappe.log_error(title="Sales Invoice List Error", message=str(e))
+        return {"success": False, "error": str(e)}

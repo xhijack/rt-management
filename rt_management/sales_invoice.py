@@ -157,7 +157,7 @@ def get_telegram_user_by_customer(customer_id: str):
 @frappe.whitelist(allow_guest=True)
 def get_sales_invoice_list(from_date=None, to_date=None):
     try:
-        # Tentukan tanggal default jika tidak diisi
+        # Hitung default tanggal jika tidak diisi
         if not from_date or not to_date:
             today_date = getdate(today())
             default_to_date = today_date.replace(day=10)
@@ -168,7 +168,7 @@ def get_sales_invoice_list(from_date=None, to_date=None):
             from_date = getdate(from_date)
             to_date = getdate(to_date)
 
-        # Ambil data Sales Invoice yang sudah submit
+        # Ambil semua invoice
         invoices = frappe.get_all(
             "Sales Invoice",
             fields=["name", "customer", "grand_total", "outstanding_amount", "posting_date"],
@@ -181,13 +181,24 @@ def get_sales_invoice_list(from_date=None, to_date=None):
 
         result = []
         for inv in invoices:
+            # Cek status pembayaran
             payment_status = "Paid" if inv.outstanding_amount == 0 else "Unpaid"
+
+            # Ambil unit dari child table
+            units = frappe.get_all(
+                "Sales Invoice Item",
+                fields=["DISTINCT unit"],
+                filters={"parent": inv.name}
+            )
+            unit_list = [u.unit for u in units if u.unit]
+
             result.append({
                 "invoice": inv.name,
                 "customer": inv.customer,
                 "total": inv.grand_total,
                 "status": payment_status,
-                "posting_date": inv.posting_date
+                "posting_date": inv.posting_date,
+                "units": unit_list
             })
 
         return {"success": True, "data": result}

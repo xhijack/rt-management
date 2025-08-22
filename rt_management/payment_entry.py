@@ -105,6 +105,7 @@ def upload_payment_and_create_entry():
       "content_b64": "<base64>"
     }
     """
+    frappe.set_user("Administrator")  # Pastikan user admin untuk akses penuh
     data = frappe.local.form_dict or frappe._dict()
     # Izinkan JSON body
     if frappe.request and frappe.request.data:

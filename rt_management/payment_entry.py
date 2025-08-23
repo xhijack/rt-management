@@ -129,6 +129,8 @@ def upload_payment_and_create_entry():
     company = data.get("company")
     customer = data.get("customer")
     logger.info(f"Proses Data: {data}")
+    logger.debug(f"Proses Data: {data}")
+    logger.debug(f"Proses Data: {data.keys()}")
     try:
         frappe.db.begin()
 

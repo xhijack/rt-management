@@ -6,7 +6,7 @@ from frappe import _
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
-def upload_payment_and_create_entry(**dota):
+def upload_payment_and_create_entry(**data):
     frappe.set_user("payment@sopwer.id")
     """Payload yang didukung (POST body / JSON):
     {
@@ -25,14 +25,14 @@ def upload_payment_and_create_entry(**dota):
     # frappe.set_user("payment@sopwer.id")
 
     # ---- ambil payload sederhana (form or json) ----
-    data = frappe._dict()
-    if frappe.local.form_dict:
-        data.update(frappe.local.form_dict)
-    if getattr(frappe, "request", None) and frappe.request.data:
-        try:
-            data.update(frappe.parse_json(frappe.request.data))
-        except Exception:
-            pass
+    # data = frappe._dict()
+    # if frappe.local.form_dict:
+    #     data.update(frappe.local.form_dict)
+    # if getattr(frappe, "request", None) and frappe.request.data:
+    #     try:
+    #         data.update(frappe.parse_json(frappe.request.data))
+    #     except Exception:
+    #         pass
 
     # ---- ambil field yang kita butuhkan ----
     si_name       = (data.get("sales_invoice") or "").strip()
@@ -47,18 +47,18 @@ def upload_payment_and_create_entry(**dota):
 
     amount = None if amount_raw in (None, "",) else flt(amount_raw)
 
-    logger = frappe.logger("payment_upload", allow_site=True)
-    logger.error({
-        "si": si_name,
-        "customer": customer,
-        "amount": amount,
-        "mop": mop,
-        "ref_no": ref_no,
-        "has_b64": bool(content_b64),
-    })
-    logger.error(frappe.request.data)
-    logger.error(frappe.request)
-    logger.error(dota)
+    # logger = frappe.logger("payment_upload", allow_site=True)
+    # logger.error({
+    #     "si": si_name,
+    #     "customer": customer,
+    #     "amount": amount,
+    #     "mop": mop,
+    #     "ref_no": ref_no,
+    #     "has_b64": bool(content_b64),
+    # })
+    # logger.error(frappe.request.data)
+    # logger.error(frappe.request)
+    # logger.error(dota)
 
     try:
         frappe.db.begin()

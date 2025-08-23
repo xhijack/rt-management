@@ -81,7 +81,6 @@ def upload_payment_and_create_entry(**data):
             pe.reference_date = ref_date
 
             pe.insert(ignore_permissions=True)
-            pe.submit()
 
             # attach bukti jika ada base64
             if content_b64:
@@ -109,7 +108,6 @@ def upload_payment_and_create_entry(**data):
         # pe.company = data.get("company") or frappe.defaults.get_user_default("Company")
 
         pe.insert(ignore_permissions=True)
-        pe.submit()
 
         if content_b64:
             _attach_b64("Payment Entry", pe.name, file_name, content_b64, is_private)

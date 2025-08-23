@@ -156,8 +156,10 @@ def get_telegram_user_by_customer(customer_id: str):
 
 @frappe.whitelist(allow_guest=True)
 def get_sales_invoice_list(from_date=None, to_date=None):
+    from frappe.utils import getdate, today, add_months, flt
+
     try:
-        # Hitung default tanggal jika tidak diisi
+        # Default range: 25 (dua bulan sebelumnya) s/d 10 (bulan berjalan)
         if not from_date or not to_date:
             today_date = getdate(today())
             default_to_date = today_date.replace(day=10)
@@ -168,29 +170,66 @@ def get_sales_invoice_list(from_date=None, to_date=None):
             from_date = getdate(from_date)
             to_date = getdate(to_date)
 
-        # Ambil semua invoice
+        # Ambil invoice
         invoices = frappe.get_all(
             "Sales Invoice",
             fields=["name", "customer", "grand_total", "outstanding_amount", "posting_date"],
-            filters={
-                "docstatus": 1,
-                "posting_date": ["between", [from_date, to_date]]
-            },
+            filters={"docstatus": 1, "posting_date": ["between", [from_date, to_date]]},
             order_by="posting_date desc"
         )
 
+        if not invoices:
+            return {"success": True, "data": []}
+
+        inv_names = [inv.name for inv in invoices]
+
+        # --- Cari Payment Entry draft yang merefer ke SI (batch, hemat query) ---
+        # 1) Ambil semua child Payment Entry Reference yang mengacu ke daftar SI
+        refs = frappe.get_all(
+            "Payment Entry Reference",
+            fields=["parent", "reference_name"],
+            filters={
+                "reference_doctype": "Sales Invoice",
+                "reference_name": ["in", inv_names]
+            },
+            distinct=True
+        )
+        parent_pes = list({r.parent for r in refs}) if refs else []
+
+        draft_pe_names = set()
+        if parent_pes:
+            # 2) Ambil Payment Entry yang statusnya draft (docstatus=0) dari parent di atas
+            draft_pe_names = set(frappe.get_all(
+                "Payment Entry",
+                filters={"name": ["in", parent_pes], "docstatus": 0},
+                pluck="name"
+            ))
+
+        # 3) Kembalikan daftar SI yang sedang "ditunggu konfirmasi" (punya PE draft)
+        invoices_with_draft_pe = set(
+            r.reference_name for r in refs if r.parent in draft_pe_names
+        )
+
+        # --- Ambil units (distinct) untuk semua invoice sekaligus ---
+        # Catatan: gunakan distinct=True, jangan "DISTINCT unit" di fields.
+        unit_rows = frappe.get_all(
+            "Sales Invoice Item",
+            fields=["parent", "unit"],
+            filters={"parent": ["in", inv_names]},
+            distinct=True
+        )
+        units_map = {}
+        for row in unit_rows:
+            if row.unit:
+                units_map.setdefault(row.parent, []).append(row.unit)
+
+        # Build result
         result = []
         for inv in invoices:
-            # Cek status pembayaran
-            payment_status = "Paid" if inv.outstanding_amount == 0 else "Unpaid"
-
-            # Ambil unit dari child table
-            units = frappe.get_all(
-                "Sales Invoice Item",
-                fields=["DISTINCT unit"],
-                filters={"parent": inv.name}
-            )
-            unit_list = [u.unit for u in units if u.unit]
+            if inv.name in invoices_with_draft_pe:
+                payment_status = "Tunggu konfirmasi"
+            else:
+                payment_status = "Paid" if flt(inv.outstanding_amount) == 0 else "Unpaid"
 
             result.append({
                 "invoice": inv.name,
@@ -198,11 +237,11 @@ def get_sales_invoice_list(from_date=None, to_date=None):
                 "total": inv.grand_total,
                 "status": payment_status,
                 "posting_date": inv.posting_date,
-                "units": unit_list
+                "units": units_map.get(inv.name, [])
             })
 
         return {"success": True, "data": result}
 
-    except Exception as e:
-        frappe.log_error(title="Sales Invoice List Error", message=str(e))
-        return {"success": False, "error": str(e)}
+    except Exception:
+        frappe.log_error(title="Sales Invoice List Error", message=frappe.get_traceback())
+        return {"success": False, "error": _("Terjadi kesalahan. Lihat Error Log untuk detailnya.")}

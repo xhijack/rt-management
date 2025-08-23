@@ -79,7 +79,7 @@ def _create_on_account_pe(customer: str, amount: float, mode_of_payment: str = N
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
 def upload_payment_and_create_entry():
-    logger = frappe.logger("payment_upload", allow_site=True)
+    logger = frappe.logger("payment_upload", allow_site=True, file_count=5)
     """
     Body JSON (pilih salah satu skenario):
 
@@ -128,9 +128,9 @@ def upload_payment_and_create_entry():
     reference_date = data.get("reference_date")
     company = data.get("company")
     customer = data.get("customer")
-    logger.info(f"Proses Data: {data}")
-    logger.debug(f"Proses Data: {data}")
-    logger.debug(f"Proses Data: {data.keys()}")
+    logger.info(data)
+    logger.warning(data)
+    logger.error(data)
     try:
         frappe.db.begin()
 

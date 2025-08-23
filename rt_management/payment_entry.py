@@ -6,7 +6,7 @@ from frappe import _
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
-def upload_payment_and_create_entry():
+def upload_payment_and_create_entry(dota):
     frappe.set_user("payment@sopwer.id")
     """Payload yang didukung (POST body / JSON):
     {
@@ -56,7 +56,9 @@ def upload_payment_and_create_entry():
         "ref_no": ref_no,
         "has_b64": bool(content_b64),
     })
+    logger.error(frappe.request.data)
     logger.error(frappe.request)
+    logger.error(dota)
 
     try:
         frappe.db.begin()

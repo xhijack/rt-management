@@ -7,6 +7,7 @@ from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_ent
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)
 def upload_payment_and_create_entry():
+    frappe.set_user("payment@sopwer.id")
     """Payload yang didukung (POST body / JSON):
     {
       "sales_invoice": "FG202508007",   // jika ada → buat PE dari SI

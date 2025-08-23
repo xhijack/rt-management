@@ -48,7 +48,7 @@ def upload_payment_and_create_entry():
     amount = None if amount_raw in (None, "",) else flt(amount_raw)
 
     logger = frappe.logger("payment_upload", allow_site=True)
-    logger.info({
+    logger.error({
         "si": si_name,
         "customer": customer,
         "amount": amount,
@@ -56,6 +56,7 @@ def upload_payment_and_create_entry():
         "ref_no": ref_no,
         "has_b64": bool(content_b64),
     })
+    logger.error(frappe.request)
 
     try:
         frappe.db.begin()
